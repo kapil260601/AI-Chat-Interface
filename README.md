@@ -30,7 +30,7 @@ I picked these technologies based on my experience with what works well in produ
 
 1. Clone the repo:
    ```bash
-   git clone <repository-url>
+   git clone [<repository-url>](https://github.com/kapil260601/AI-Chat-Interface)
    cd ai-chat-interface
    ```
 
