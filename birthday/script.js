@@ -5,6 +5,9 @@ document.addEventListener('DOMContentLoaded', function () {
     setupScrollAnimations();
     setupButtonRipple();
     setupPhotoEntranceAnimations();
+    hydrateGalleryImages();
+    setupLikeDelegation();
+    setupToTop();
 });
 
 // Create floating particles
@@ -79,19 +82,26 @@ function scrollToSection(sectionId) {
     if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// Toggle like functionality for photos
+// Toggle like functionality for photos (imperative API kept for compatibility)
 function toggleLike(button) {
     var heartIcon = button.querySelector('.heart-icon');
     button.classList.toggle('liked');
     var liked = button.classList.contains('liked');
     button.setAttribute('aria-pressed', liked ? 'true' : 'false');
+    if (heartIcon) heartIcon.textContent = liked ? '❤️' : '🤍';
+    if (liked) createFloatingHeart(button);
+}
 
-    if (liked) {
-        heartIcon.textContent = '❤️';
-        createFloatingHeart(button);
-    } else {
-        heartIcon.textContent = '🤍';
-    }
+// Event delegation for like buttons
+function setupLikeDelegation() {
+    document.addEventListener('click', function (e) {
+        var target = e.target;
+        if (!target) return;
+        var button = target.closest && target.closest('.like-btn');
+        if (!button) return;
+        e.preventDefault();
+        toggleLike(button);
+    });
 }
 
 // Create floating heart animation when photo is liked
@@ -187,5 +197,64 @@ function setupPhotoEntranceAnimations() {
     var photoStyle = document.createElement('style');
     photoStyle.textContent = '@keyframes photoEnter { from { transform: scale(0.92) rotate(-3deg); opacity: 0; } to { transform: scale(1) rotate(0deg); opacity: 1; } }';
     document.head.appendChild(photoStyle);
+}
+
+// Progressive image loading with local-first and network fallback
+function hydrateGalleryImages() {
+    var cards = document.querySelectorAll('.photo-card');
+    cards.forEach(function (card) {
+        var img = card.querySelector('img');
+        var container = card.querySelector('.photo-container');
+        if (!img || !container) return;
+
+        // Mark loading state for skeleton
+        container.classList.remove('is-loaded');
+
+        // If image fails, switch to fallback URL (e.g., Unsplash)
+        var fallbackSrc = img.getAttribute('data-fallback');
+        var triedFallback = false;
+
+        function onLoad() {
+            container.classList.add('is-loaded');
+        }
+
+        function onError() {
+            if (!triedFallback && fallbackSrc) {
+                triedFallback = true;
+                img.src = fallbackSrc;
+            } else {
+                // As a last resort, hide broken image container
+                container.classList.add('is-loaded');
+                img.style.opacity = '0';
+            }
+        }
+
+        img.addEventListener('load', onLoad, { once: true });
+        img.addEventListener('error', onError);
+
+        // If browser already cached it
+        if (img.complete && img.naturalWidth > 0) {
+            onLoad();
+        }
+    });
+}
+
+// Back to top button behavior
+function setupToTop() {
+    var toTop = document.querySelector('.to-top');
+    if (!toTop) return;
+    function onScroll() {
+        var scrolled = window.pageYOffset || document.documentElement.scrollTop;
+        if (scrolled > 400) {
+            toTop.classList.add('show');
+        } else {
+            toTop.classList.remove('show');
+        }
+    }
+    window.addEventListener('scroll', onScroll);
+    onScroll();
+    toTop.addEventListener('click', function () {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
 }
 
